@@ -1,7 +1,7 @@
 class StripeTax
   # rates from here:
   # http://www.salestaxinstitute.com/resources/rates
-  def get_sales_tax_rate(state)
+  def self.get_rate(state)
     rates = {
       'AL' => 0.04,
       'AK' => 0.00,
@@ -59,8 +59,60 @@ class StripeTax
     rates[state]
   end
   
-  def calculate_sales_tax(charge, state)
+  def self.calculate(charge, state)
     rate = get_sales_tax_rate(state)
     ((rate * charge.to_f / 100).round(2) * 100).to_i
+  end
+
+  # this method creates new subscription with tax
+  def self.create_subscription(planID, coupon, email, state)
+    plan = Stripe::Plan.retrieve(planID)
+    charge_amount = plan.amount
+    
+    if coupon.length > 0
+      customer = Stripe::Customer.create(
+        # :description => email,
+        :description => pap_custom + "," + state,
+        :email => email,
+        :card => stripe_card_token,
+        :coupon => coupon
+      )
+      
+      # retrieve coupon to calculate sales tax for dollar off amount
+      coupon = Stripe::Coupon.retrieve(coupon)
+      if coupon.amount_off != nil then
+        charge_amount = charge_amount - coupon.amount_off
+      end
+    else
+      customer = Stripe::Customer.create(
+        # :description => email,
+        :description => pap_custom + "," + state,
+        :email => email,
+        :card => stripe_card_token
+      )
+    end
+    
+    if state != '' then
+      # create invoice item for sales tax
+      sales_tax = calculate_sales_tax(charge_amount, state)
+    
+      sales_tax_item = Stripe::InvoiceItem.create(
+          :customer => customer.id,
+          :amount => sales_tax,
+          :currency => plan.currency,
+          :description => "Sales tax for " + state
+      )
+    end
+    
+    customer.update_subscription(:plan => planID)
+    
+    return customer
+  end
+
+  # create sales tax invoice item for next subscription
+  # call this in invoice.created
+  def self.add_recurring(event_data, state)
+    if event.data.object.closed == false then
+    end
   end
 end
