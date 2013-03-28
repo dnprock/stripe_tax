@@ -1,4 +1,4 @@
-class SalesTax
+class StripeTax
   # rates from here:
   # http://www.salestaxinstitute.com/resources/rates
   def get_sales_tax_rate(state)
