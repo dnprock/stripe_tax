@@ -107,7 +107,7 @@ class StripeTax
 
   # create sales tax invoice item for next subscription
   # call this in invoice.created
-  def self.add_recurring(event_data, state)
+  def self.recurring_add_tax(event_data, state)
     if event.data.object.closed == false then
     end
   end
