@@ -60,19 +60,17 @@ class StripeTax
   end
   
   def self.calculate(charge, state)
-    rate = get_sales_tax_rate(state)
+    rate = get_rate(state)
     ((rate * charge.to_f / 100).round(2) * 100).to_i
   end
 
-  # this method creates new subscription with tax
-  def self.create_subscription(planID, coupon, email, state)
+  # this method creates new customer with tax
+  def self.create_customer(planID, coupon, email, state, stripe_card_token)
     plan = Stripe::Plan.retrieve(planID)
     charge_amount = plan.amount
     
     if coupon.length > 0
       customer = Stripe::Customer.create(
-        # :description => email,
-        :description => pap_custom + "," + state,
         :email => email,
         :card => stripe_card_token,
         :coupon => coupon
@@ -85,8 +83,6 @@ class StripeTax
       end
     else
       customer = Stripe::Customer.create(
-        # :description => email,
-        :description => pap_custom + "," + state,
         :email => email,
         :card => stripe_card_token
       )
@@ -94,7 +90,7 @@ class StripeTax
     
     if state != '' then
       # create invoice item for sales tax
-      sales_tax = calculate_sales_tax(charge_amount, state)
+      sales_tax = calculate(charge_amount, state)
     
       sales_tax_item = Stripe::InvoiceItem.create(
           :customer => customer.id,
