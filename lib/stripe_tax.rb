@@ -107,8 +107,29 @@ class StripeTax
 
   # create sales tax invoice item for next subscription
   # call this in invoice.created
-  def self.recurring_add_tax(event_data, state)
+  def self.recurring_add_tax(event, state)
+    # next subscription, invoice should be open
     if event.data.object.closed == false then
+      charge_amount = event.data.object.lines.data[0].plan.amount
+
+      if event.data.object.discount then
+        # retrieve coupon to calculate sales tax for dollar off amount
+        coupon = event.data.object.discount.coupon
+        if coupon.amount_off != nil then
+          charge_amount = charge_amount - coupon.amount_off
+        end
+      end
+
+      # create invoice item for sales tax
+      sales_tax = calculate(charge_amount, state)
+
+      sales_tax_item = Stripe::InvoiceItem.create(
+              :customer => event.data.object.customer,
+              :amount => sales_tax,
+              :currency => event.data.object.lines.data[0].plan.currency,
+              :description => "Sales tax for " + state
+        )
+      sales_tax_item
     end
   end
 end
